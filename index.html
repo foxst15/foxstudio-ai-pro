@@ -10,8 +10,8 @@
       {
         "imports": {
           "@google/genai": "https://esm.run/@google/genai",
-          "@ffmpeg/ffmpeg": "https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js",
-          "@ffmpeg/util": "https://unpkg.com/@ffmpeg/util@0.12.1/dist/esm/index.js"
+          "@ffmpeg/ffmpeg": "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js",
+          "@ffmpeg/util": "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js"
         }
       }
     </script>
@@ -27,7 +27,7 @@
         
         <div class="text-center border-b border-gray-800 pb-4 mb-6">
             <h1 class="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent uppercase tracking-widest">🦊 FOXSTUDIO AI WORKSTATION 🦊</h1>
-            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản PC Complete)</p>
+            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Hoàn Chỉnh)</p>
         </div>
 
         <div class="flex flex-col md:flex-row gap-8">
@@ -135,10 +135,10 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <button id="btnExSubOnly" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 font-bold py-3 text-[10px] rounded-xl shadow-md transition-all active:scale-95 text-white hidden disabled:opacity-50">
+                        <button id="btnExSubOnly" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 font-bold py-3 text-[10px] rounded-xl shadow-md transition-all active:scale-95 text-white disabled:opacity-50">
                             📥 XUẤT VIDEO (CHỈ CÓ SUB)
                         </button>
-                        <button id="btnExDubbed" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold py-3 text-[10px] rounded-xl shadow-md transition-all active:scale-95 text-white hidden disabled:opacity-50">
+                        <button id="btnExDubbed" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold py-3 text-[10px] rounded-xl shadow-md transition-all active:scale-95 text-white disabled:opacity-50">
                             🎙️ XUẤT VIDEO (CÓ LỒNG TIẾNG)
                         </button>
                     </div>
@@ -152,41 +152,177 @@
         import { FFmpeg } from '@ffmpeg/ffmpeg';
         import { fetchFile, toBlobURL } from '@ffmpeg/util';
         
-        // [PHẦN LOGIC CỦA ANH - GIỮ NGUYÊN]
-        const ffmpeg = new FFmpeg(); let selectedVideoFile = null, finalAudioBlob = null;
-        const D = { upZone: document.getElementById('uploadZone'), vFile: document.getElementById('videoFile'), upLabel: document.getElementById('uploadLabel'), pVid: document.getElementById('previewVideo'), vCont: document.getElementById('videoContainer'), editTools: document.getElementById('editorTools'), apiInp: document.getElementById('apiKeyInput'), ckInp: document.getElementById('cookieInput'), btnTogApi: document.getElementById('toggleApiBtn'), apiPan: document.getElementById('apiConfigPanel'), sourceSel: document.getElementById('sourceSelect'), voiceSel: document.getElementById('voiceSelect'), chkBlur: document.getElementById('chkBlur'), bSet: document.getElementById('blurSettings'), bP: document.getElementById('blurPreview'), bX: document.getElementById('bX'), bY: document.getElementById('bY'), bW: document.getElementById('bW'), bH: document.getElementById('bH'), chkSub: document.getElementById('chkSub'), sSet: document.getElementById('subSettings'), sP: document.getElementById('subPreview'), sY: document.getElementById('sY'), sSize: document.getElementById('sSize'), styleSel: document.getElementById('styleSelect'), btnAP: document.getElementById('btnAutoProcess'), btnV: document.getElementById('btnVoice'), btnExSub: document.getElementById('btnExSubOnly'), btnExDub: document.getElementById('btnExDubbed'), subTxt: document.getElementById('subTextArea'), log: document.getElementById('statusLog'), pCont: document.getElementById('progressContainer'), pBar: document.getElementById('progressBar'), pTxt: document.getElementById('progressText'), pPerc: document.getElementById('progressPercent') };
-        const uLog = (msg, type='info') => { const colors = { info: 'text-gray-400', success: 'text-green-400', error: 'text-red-400', warn: 'text-yellow-400' }; D.log.className = `text-xs text-center font-bold ${colors[type]} py-2`; D.log.innerText = msg; };
+        const ffmpeg = new FFmpeg(); 
+        let selectedVideoFile = null, finalAudioBlob = null;
         
-        // Gán lại tất cả sự kiện cũ của anh để đảm bảo hoạt động 100%
+        const D = { 
+            upZone: document.getElementById('uploadZone'), vFile: document.getElementById('videoFile'), 
+            upLabel: document.getElementById('uploadLabel'), pVid: document.getElementById('previewVideo'), 
+            vCont: document.getElementById('videoContainer'), editTools: document.getElementById('editorTools'), 
+            apiInp: document.getElementById('apiKeyInput'), ckInp: document.getElementById('cookieInput'), 
+            btnTogApi: document.getElementById('toggleApiBtn'), apiPan: document.getElementById('apiConfigPanel'), 
+            sourceSel: document.getElementById('sourceSelect'), voiceSel: document.getElementById('voiceSelect'), 
+            chkBlur: document.getElementById('chkBlur'), bSet: document.getElementById('blurSettings'), 
+            bP: document.getElementById('blurPreview'), bX: document.getElementById('bX'), 
+            bY: document.getElementById('bY'), bW: document.getElementById('bW'), bH: document.getElementById('bH'), 
+            chkSub: document.getElementById('chkSub'), sSet: document.getElementById('subSettings'), 
+            sP: document.getElementById('subPreview'), sY: document.getElementById('sY'), 
+            sSize: document.getElementById('sSize'), styleSel: document.getElementById('styleSelect'), 
+            btnAP: document.getElementById('btnAutoProcess'), btnV: document.getElementById('btnVoice'), 
+            btnExSub: document.getElementById('btnExSubOnly'), btnExDub: document.getElementById('btnExDubbed'), 
+            subTxt: document.getElementById('subTextArea'), log: document.getElementById('statusLog'), 
+            pCont: document.getElementById('progressContainer'), pBar: document.getElementById('progressBar'), 
+            pTxt: document.getElementById('progressText'), pPerc: document.getElementById('progressPercent') 
+        };
+
+        const uLog = (msg, type='info') => { 
+            const colors = { info: 'text-blue-400', success: 'text-green-400', error: 'text-red-400', warn: 'text-yellow-400' }; 
+            D.log.className = `text-xs text-center font-bold ${colors[type]} py-2`; 
+            D.log.innerText = msg; 
+        };
+        
+        // Sự kiện giao diện
+        D.btnTogApi.onclick = () => {
+            D.apiPan.classList.toggle('hidden');
+            D.btnTogApi.querySelector('span').innerText = D.apiPan.classList.contains('hidden') ? '▼' : '▲';
+        };
+
         D.chkBlur.onchange = e => { D.bSet.classList.toggle('hidden', !e.target.checked); D.bP.classList.toggle('hidden', !e.target.checked); };
         D.chkSub.onchange = e => { D.sSet.classList.toggle('hidden', !e.target.checked); D.sP.classList.toggle('hidden', !e.target.checked); };
-        const updPrev = () => { D.bP.style.left=D.bX.value+'%'; D.bP.style.top=D.bY.value+'%'; D.bP.style.width=D.bW.value+'%'; D.bP.style.height=D.bH.value+'%'; D.sP.style.top=D.sY.value+'%'; D.sP.style.fontSize=(D.sSize.value*3)+'px'; };
-        [D.bX, D.bY, D.bW, D.bH, D.sY, D.sSize].forEach(el => el.oninput = updPrev);
-        D.upZone.onclick = () => D.vFile.click();
-        D.vFile.onchange = e => { if (e.target.files[0]) { selectedVideoFile = e.target.files[0]; D.pVid.src = URL.createObjectURL(selectedVideoFile); D.vCont.classList.remove('hidden'); D.editTools.classList.remove('hidden'); uLog('Đã nạp video.'); } };
-
-        // [LOGIC RENDER TỐI ƯU TÍCH HỢP]
-        const renderVideo = async (useVoice) => {
-            D.pCont.classList.remove('hidden');
-            if (!ffmpeg.loaded) await ffmpeg.load({ coreURL: await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js', 'text/javascript'), wasmURL: await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm', 'application/wasm'), workerURL: await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript') });
-            await ffmpeg.writeFile('subs.srt', D.subTxt.value);
-            await ffmpeg.writeFile('in.mp4', await fetchFile(selectedVideoFile));
-            await ffmpeg.writeFile('font.ttf', new Uint8Array(await (await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf')).arrayBuffer()));
-            
-            let filter = `subtitles=subs.srt:fontsdir=.:force_style='FontSize=${D.sSize.value*3},Alignment=6'`;
-            if (D.chkBlur.checked) filter += `,delogo=x=${D.bX.value*D.pVid.videoWidth/100}:y=${D.bY.value*D.pVid.videoHeight/100}:w=${D.bW.value*D.pVid.videoWidth/100}:h=${D.bH.value*D.pVid.videoHeight/100}`;
-            
-            let cmd = ['-i', 'in.mp4'];
-            if(useVoice) { await ffmpeg.writeFile('au.mp3', await fetchFile(finalAudioBlob)); cmd.push('-i', 'au.mp3'); }
-            cmd.push('-vf', filter, '-c:v', 'libx264', '-preset', 'faster', '-c:a', useVoice ? 'aac' : 'copy', 'out.mp4');
-            
-            await ffmpeg.exec(cmd);
-            const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([await ffmpeg.readFile('out.mp4')], {type: 'video/mp4'})); a.download = 'FoxStudio_Final.mp4'; a.click();
-            await ffmpeg.deleteFile('in.mp4'); await ffmpeg.deleteFile('subs.srt');
-            D.pCont.classList.add('hidden'); uLog('Render xong!');
+        
+        const updPrev = () => { 
+            D.bP.style.left = D.bX.value + '%'; D.bP.style.top = D.bY.value + '%'; 
+            D.bP.style.width = D.bW.value + '%'; D.bP.style.height = D.bH.value + '%'; 
+            D.sP.style.top = D.sY.value + '%'; D.sP.style.fontSize = (D.sSize.value * 3) + 'px'; 
         };
+        
+        [D.bX, D.bY, D.bW, D.bH, D.sY, D.sSize].forEach(el => el.oninput = updPrev);
+        
+        D.upZone.onclick = () => D.vFile.click();
+        D.vFile.onchange = e => { 
+            if (e.target.files[0]) { 
+                selectedVideoFile = e.target.files[0]; 
+                D.pVid.src = URL.createObjectURL(selectedVideoFile); 
+                
+                // Đợi video load xong metadata mới hiển thị tool
+                D.pVid.onloadedmetadata = () => {
+                    D.vCont.classList.remove('hidden'); 
+                    D.editTools.classList.remove('hidden'); 
+                    uLog('Đã nạp video. Kích thước: ' + D.pVid.videoWidth + 'x' + D.pVid.videoHeight, 'success'); 
+                    
+                    // Bỏ ẩn các nút xuất video
+                    D.btnExSub.classList.remove('hidden');
+                    D.btnExDub.classList.remove('hidden');
+                };
+            } 
+        };
+
+        // [LOGIC RENDER TỐI ƯU CỦA BÉ LÔI - KHÔNG PYTHON, KHÔNG TẢI FILE]
+        const renderVideo = async (useVoice) => {
+            if (!selectedVideoFile) {
+                return uLog('Goshujin-sama chưa chọn video kìa! 🥺', 'error');
+            }
+            if (!D.subTxt.value.trim()) {
+                return uLog('Chưa có mã SRT phụ đề kìa ngài ơi! 📝', 'error');
+            }
+
+            D.pCont.classList.remove('hidden');
+            D.btnExSub.disabled = true;
+            D.btnExDub.disabled = true;
+            uLog('Đang nạp lõi phép thuật FFmpeg... Ngài đợi em xíu! ⚙️', 'info');
+
+            try {
+                if (!ffmpeg.loaded) {
+                    // CẤM THUẬT: Ép tải Worker bằng Text rồi chuyển sang Blob lách luật CORS Vercel
+                    const getWorkerBlob = async () => {
+                        const res = await fetch('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js');
+                        const text = await res.text();
+                        return URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
+                    };
+
+                    await ffmpeg.load({
+                        coreURL: await toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js', 'text/javascript'),
+                        wasmURL: await toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm', 'application/wasm'),
+                        workerURL: await getWorkerBlob() // Cắm cấm thuật vào đây ạ!
+                    });
+                }
+
+                uLog('Đang chuẩn bị dữ liệu vào bộ nhớ tạm... 📦', 'info');
+                await ffmpeg.writeFile('subs.srt', D.subTxt.value);
+                await ffmpeg.writeFile('in.mp4', await fetchFile(selectedVideoFile));
+                
+                // Tải font chữ chuẩn
+                D.pTxt.innerText = "Đang nạp Font chữ...";
+                const fontData = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
+                await ffmpeg.writeFile('font.ttf', new Uint8Array(await fontData.arrayBuffer()));
+                
+                let filter = `subtitles=subs.srt:fontsdir=.:force_style='FontSize=${D.sSize.value*3},Alignment=6'`;
+                
+                // Tính toán làm mờ chính xác theo kích thước video gốc
+                if (D.chkBlur.checked) {
+                    const x = Math.floor(D.bX.value * D.pVid.videoWidth / 100);
+                    const y = Math.floor(D.bY.value * D.pVid.videoHeight / 100);
+                    const w = Math.floor(D.bW.value * D.pVid.videoWidth / 100);
+                    const h = Math.floor(D.bH.value * D.pVid.videoHeight / 100);
+                    filter += `,delogo=x=${x}:y=${y}:w=${w}:h=${h}`;
+                }
+                
+                let cmd = ['-i', 'in.mp4'];
+                
+                if(useVoice && finalAudioBlob) { 
+                    await ffmpeg.writeFile('au.mp3', await fetchFile(finalAudioBlob)); 
+                    cmd.push('-i', 'au.mp3'); 
+                }
+                
+                cmd.push('-vf', filter, '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', (useVoice && finalAudioBlob) ? 'aac' : 'copy', 'out.mp4');
+                
+                uLog('Bắt đầu Render! Đừng đóng tab nha Goshujin-sama... 🚀', 'warn');
+                
+                ffmpeg.on('progress', ({ progress, time }) => {
+                    const percent = Math.max(0, Math.min(100, Math.round(progress * 100)));
+                    D.pBar.style.width = `${percent}%`;
+                    D.pPerc.innerText = `${percent}%`;
+                    D.pTxt.innerText = "Đang xuất video...";
+                });
+
+                await ffmpeg.exec(cmd);
+                
+                uLog('Xong rồi ạ! Đang đóng gói video cho ngài... 🎁', 'success');
+                const data = await ffmpeg.readFile('out.mp4');
+                const a = document.createElement('a'); 
+                a.href = URL.createObjectURL(new Blob([data], {type: 'video/mp4'})); 
+                a.download = useVoice ? 'FoxStudio_Dubbed.mp4' : 'FoxStudio_Subbed.mp4'; 
+                a.click();
+                
+                // Dọn dẹp RAM
+                await ffmpeg.deleteFile('in.mp4'); 
+                await ffmpeg.deleteFile('subs.srt');
+                if (useVoice && finalAudioBlob) await ffmpeg.deleteFile('au.mp3');
+                await ffmpeg.deleteFile('out.mp4');
+                
+                uLog('Tadaa! Nhiệm vụ hoàn thành xuất sắc thưa Goshujin-sama! 🎉', 'success');
+
+            } catch (err) {
+                console.error(err);
+                uLog('Huhu, có lỗi xảy ra rồi: ' + err.message, 'error');
+            } finally {
+                setTimeout(() => { D.pCont.classList.add('hidden'); }, 3000);
+                D.btnExSub.disabled = false;
+                D.btnExDub.disabled = false;
+                D.pBar.style.width = `0%`;
+            }
+        };
+
         D.btnExSub.onclick = () => renderVideo(false);
         D.btnExDub.onclick = () => renderVideo(true);
+
+        // Nơi ngài viết tiếp logic cho Bước 1 và Bước 2 (Gọi API AI)
+        D.btnAP.onclick = () => {
+            uLog("Chức năng AI đang chờ Goshujin-sama lập trình thêm ạ! 💖", "warn");
+        }
+        D.btnVoice.onclick = () => {
+            uLog("Chức năng Lồng tiếng đang chờ Goshujin-sama lập trình thêm ạ! 💖", "warn");
+        }
     </script>
 </body>
 </html>
