@@ -280,23 +280,21 @@
         };
 
         // HÀM RENDER CHUNG (ĐÃ SỬA LỖI TẠI ĐÂY - DÙNG TOBLOBURL ĐỂ SỬ LÝ WORKER)
-        const renderVideo = async (useVoice) => {
-            if (!selectedVideoFile) return;
-            D.pCont.classList.remove('hidden');
-            try {
-                if (!ffmpeg.loaded) { 
-                    uLog('⏳ Đang nạp FFmpeg và xử lý Worker cục bộ...', 'info'); 
-                    
-                    const coreURL = await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js', 'text/javascript');
-                    const wasmURL = await toBlobURL('https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm', 'application/wasm');
-                    const workerURL = await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript');
-                    
-                    await ffmpeg.load({ 
-                        coreURL: coreURL, 
-                        wasmURL: wasmURL,
-                        workerURL: workerURL
-                    }); 
-                }
+       const renderVideo = async (useVoice) => {
+    if (!selectedVideoFile) return;
+    D.pCont.classList.remove('hidden');
+    try {
+        if (!ffmpeg.loaded) { 
+            uLog('⏳ Đang nạp FFmpeg từ máy chủ đám mây...', 'info'); 
+            
+            // Dùng thẳng link từ unpkg, không cần tạo file trong GitHub nữa
+            const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+            await ffmpeg.load({ 
+                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                workerURL: await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript')
+            }); 
+        }
                 
                 ffmpeg.on('progress', ({ progress }) => setProg('Đang Render...', Math.round(progress * 100)));
 
