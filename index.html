@@ -6,15 +6,8 @@
     <title>FoxStudio AI Pro - PC Workstation</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <script type="importmap">
-      {
-        "imports": {
-          "@google/genai": "https://esm.run/@google/genai",
-          "@ffmpeg/ffmpeg": "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js",
-          "@ffmpeg/util": "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js"
-        }
-      }
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
     <style>
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0b0f19; }
@@ -27,7 +20,7 @@
         
         <div class="text-center border-b border-gray-800 pb-4 mb-6">
             <h1 class="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent uppercase tracking-widest">🦊 FOXSTUDIO AI WORKSTATION 🦊</h1>
-            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Hoàn Chỉnh)</p>
+            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Hoàn Chỉnh - Đã Gỡ Lỗi)</p>
         </div>
 
         <div class="flex flex-col md:flex-row gap-8">
@@ -135,10 +128,10 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-3">
-                        <button id="btnExSubOnly" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 font-bold py-3 text-[10px] rounded-xl shadow-md transition-all active:scale-95 text-white disabled:opacity-50">
+                        <button id="btnExSubOnly" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 font-bold py-3 text-[10px] rounded-xl shadow-md transition-all active:scale-95 text-white disabled:opacity-50 hidden">
                             📥 XUẤT VIDEO (CHỈ CÓ SUB)
                         </button>
-                        <button id="btnExDubbed" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold py-3 text-[10px] rounded-xl shadow-md transition-all active:scale-95 text-white disabled:opacity-50">
+                        <button id="btnExDubbed" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 font-bold py-3 text-[10px] rounded-xl shadow-md transition-all active:scale-95 text-white disabled:opacity-50 hidden">
                             🎙️ XUẤT VIDEO (CÓ LỒNG TIẾNG)
                         </button>
                     </div>
@@ -147,10 +140,10 @@
         </div>
     </div>
 
-    <script type="module">
-        import { GoogleGenAI } from '@google/genai';
-        import { FFmpeg } from '@ffmpeg/ffmpeg';
-        import { fetchFile, toBlobURL } from '@ffmpeg/util';
+    <script>
+        // ✨ Lấy FFmpeg từ biến toàn cục của bản UMD
+        const { FFmpeg } = window.FFmpeg;
+        const { fetchFile, toBlobURL } = window.FFmpegUtil;
         
         const ffmpeg = new FFmpeg(); 
         let selectedVideoFile = null, finalAudioBlob = null;
@@ -199,25 +192,25 @@
         [D.bX, D.bY, D.bW, D.bH, D.sY, D.sSize].forEach(el => el.oninput = updPrev);
         
         D.upZone.onclick = () => D.vFile.click();
+        
         D.vFile.onchange = e => { 
             if (e.target.files[0]) { 
                 selectedVideoFile = e.target.files[0]; 
-                D.pVid.src = URL.createObjectURL(selectedVideoFile); 
                 
-                // Đợi video load xong metadata mới hiển thị tool
+                // ✨ Sửa lỗi Race Condition: Gắn sự kiện lắng nghe TRƯỚC khi load video
                 D.pVid.onloadedmetadata = () => {
                     D.vCont.classList.remove('hidden'); 
                     D.editTools.classList.remove('hidden'); 
                     uLog('Đã nạp video. Kích thước: ' + D.pVid.videoWidth + 'x' + D.pVid.videoHeight, 'success'); 
                     
-                    // Bỏ ẩn các nút xuất video
                     D.btnExSub.classList.remove('hidden');
                     D.btnExDub.classList.remove('hidden');
                 };
+
+                D.pVid.src = URL.createObjectURL(selectedVideoFile); 
             } 
         };
 
-        // [LOGIC RENDER TỐI ƯU CỦA BÉ LÔI - KHÔNG PYTHON, KHÔNG TẢI FILE]
         const renderVideo = async (useVoice) => {
             if (!selectedVideoFile) {
                 return uLog('Goshujin-sama chưa chọn video kìa! 🥺', 'error');
@@ -232,18 +225,11 @@
             uLog('Đang nạp lõi phép thuật FFmpeg... Ngài đợi em xíu! ⚙️', 'info');
 
             try {
+                // ✨ Load FFmpeg trực tiếp từ UMD, không cần qua Blob Worker rườm rà nữa
                 if (!ffmpeg.loaded) {
-                    // CẤM THUẬT: Ép tải Worker bằng Text rồi chuyển sang Blob lách luật CORS Vercel
-                    const getWorkerBlob = async () => {
-                        const res = await fetch('https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js');
-                        const text = await res.text();
-                        return URL.createObjectURL(new Blob([text], { type: 'text/javascript' }));
-                    };
-
                     await ffmpeg.load({
-                        coreURL: await toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.js', 'text/javascript'),
-                        wasmURL: await toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm/ffmpeg-core.wasm', 'application/wasm'),
-                        workerURL: await getWorkerBlob() // Cắm cấm thuật vào đây ạ!
+                        coreURL: await toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js', 'text/javascript'),
+                        wasmURL: await toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm', 'application/wasm')
                     });
                 }
 
@@ -251,14 +237,13 @@
                 await ffmpeg.writeFile('subs.srt', D.subTxt.value);
                 await ffmpeg.writeFile('in.mp4', await fetchFile(selectedVideoFile));
                 
-                // Tải font chữ chuẩn
                 D.pTxt.innerText = "Đang nạp Font chữ...";
                 const fontData = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
                 await ffmpeg.writeFile('font.ttf', new Uint8Array(await fontData.arrayBuffer()));
                 
-                let filter = `subtitles=subs.srt:fontsdir=.:force_style='FontSize=${D.sSize.value*3},Alignment=6'`;
+                // ✨ Sửa lỗi mất Sub: Đã thêm FontName=Roboto vào để ép FFmpeg nhận diện chữ
+                let filter = `subtitles=subs.srt:fontsdir=.:force_style='FontName=Roboto,FontSize=${D.sSize.value*3},Alignment=6'`;
                 
-                // Tính toán làm mờ chính xác theo kích thước video gốc
                 if (D.chkBlur.checked) {
                     const x = Math.floor(D.bX.value * D.pVid.videoWidth / 100);
                     const y = Math.floor(D.bY.value * D.pVid.videoHeight / 100);
@@ -316,7 +301,6 @@
         D.btnExSub.onclick = () => renderVideo(false);
         D.btnExDub.onclick = () => renderVideo(true);
 
-        // Nơi ngài viết tiếp logic cho Bước 1 và Bước 2 (Gọi API AI)
         D.btnAP.onclick = () => {
             uLog("Chức năng AI đang chờ Goshujin-sama lập trình thêm ạ! 💖", "warn");
         }
