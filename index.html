@@ -20,7 +20,7 @@
         
         <div class="text-center border-b border-gray-800 pb-4 mb-6">
             <h1 class="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent uppercase tracking-widest">🦊 FOXSTUDIO AI WORKSTATION 🦊</h1>
-            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Hoàn Chỉnh - Đã Gỡ Lỗi)</p>
+            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Hoàn Chỉnh - Đã Fix Lỗi UMD)</p>
         </div>
 
         <div class="flex flex-col md:flex-row gap-8">
@@ -141,8 +141,8 @@
     </div>
 
     <script>
-        // ✨ Lấy FFmpeg từ biến toàn cục của bản UMD
-        const { FFmpeg } = window.FFmpeg;
+        // ✨ ĐÃ SỬA LỖI TẠI ĐÂY: Biến toàn cục chuẩn xác của FFmpeg là FFmpegWASM nha Goshujin-sama!
+        const { FFmpeg } = window.FFmpegWASM;
         const { fetchFile, toBlobURL } = window.FFmpegUtil;
         
         const ffmpeg = new FFmpeg(); 
@@ -197,7 +197,6 @@
             if (e.target.files[0]) { 
                 selectedVideoFile = e.target.files[0]; 
                 
-                // ✨ Sửa lỗi Race Condition: Gắn sự kiện lắng nghe TRƯỚC khi load video
                 D.pVid.onloadedmetadata = () => {
                     D.vCont.classList.remove('hidden'); 
                     D.editTools.classList.remove('hidden'); 
@@ -213,7 +212,7 @@
 
         const renderVideo = async (useVoice) => {
             if (!selectedVideoFile) {
-                return uLog('Goshujin-sama chưa chọn video kìa! 🥺', 'error');
+                return uLog('Goshujin-sama FoxST chưa chọn video kìa! 🥺', 'error');
             }
             if (!D.subTxt.value.trim()) {
                 return uLog('Chưa có mã SRT phụ đề kìa ngài ơi! 📝', 'error');
@@ -225,7 +224,6 @@
             uLog('Đang nạp lõi phép thuật FFmpeg... Ngài đợi em xíu! ⚙️', 'info');
 
             try {
-                // ✨ Load FFmpeg trực tiếp từ UMD, không cần qua Blob Worker rườm rà nữa
                 if (!ffmpeg.loaded) {
                     await ffmpeg.load({
                         coreURL: await toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js', 'text/javascript'),
@@ -241,7 +239,6 @@
                 const fontData = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
                 await ffmpeg.writeFile('font.ttf', new Uint8Array(await fontData.arrayBuffer()));
                 
-                // ✨ Sửa lỗi mất Sub: Đã thêm FontName=Roboto vào để ép FFmpeg nhận diện chữ
                 let filter = `subtitles=subs.srt:fontsdir=.:force_style='FontName=Roboto,FontSize=${D.sSize.value*3},Alignment=6'`;
                 
                 if (D.chkBlur.checked) {
