@@ -7,9 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
-    
     <style>
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #0b0f19; }
@@ -22,7 +19,7 @@
         
         <div class="text-center border-b border-gray-800 pb-4 mb-6">
             <h1 class="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent uppercase tracking-widest">🦊 FOXSTUDIO AI WORKSTATION 🦊</h1>
-            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Không Thể Lỗi Hơn Được Nữa)</p>
+            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Native Canvas Cực Nhẹ Mượt)</p>
         </div>
 
         <div class="flex flex-col md:flex-row gap-8">
@@ -103,7 +100,7 @@
                 
                 <div id="progressContainer" class="hidden bg-[#0b0f19] p-3 rounded-xl border border-blue-900/50 space-y-2">
                     <div class="flex justify-between text-[10px] font-bold text-blue-400">
-                        <span id="progressText">Đang xử lý...</span><span id="progressPercent">0%</span>
+                        <span id="progressText">Đang ghi hình ảo... Đừng đóng tab nha!</span><span id="progressPercent">0%</span>
                     </div>
                     <div class="w-full bg-gray-800 rounded-full h-1.5"><div id="progressBar" class="bg-gradient-to-r from-blue-400 to-purple-500 h-1.5 rounded-full w-0 transition-all duration-300"></div></div>
                 </div>
@@ -143,11 +140,6 @@
     </div>
 
     <script>
-        // ✨ Khai báo biến toàn cục của v0.12 UMD
-        const { FFmpeg } = window.FFmpegWASM;
-        const { fetchFile, toBlobURL } = window.FFmpegUtil;
-        
-        const ffmpeg = new FFmpeg(); 
         let selectedVideoFile = null, finalAudioBlob = null;
         
         const D = { 
@@ -201,7 +193,7 @@
                 D.pVid.onloadedmetadata = () => {
                     D.vCont.classList.remove('hidden'); 
                     D.editTools.classList.remove('hidden'); 
-                    uLog('Đã nạp video. Kích thước: ' + D.pVid.videoWidth + 'x' + D.pVid.videoHeight, 'success'); 
+                    uLog('Đã nạp video siêu tốc! 🚀', 'success'); 
                     D.btnExSub.classList.remove('hidden');
                     D.btnExDub.classList.remove('hidden');
                 };
@@ -210,6 +202,22 @@
             } 
         };
 
+        // Hàm giúp dịch mã SRT thành thời gian thực (giây)
+        const parseSRT = (data) => {
+            const regex = /(\d{2}:\d{2}:\d{2},\d{3}) --> (\d{2}:\d{2}:\d{2},\d{3})\n([\s\S]*?)(?=\n{2}|$)/g;
+            let match; const result = [];
+            const toSec = (time) => {
+                const [h, m, s] = time.split(':');
+                const [sec, ms] = s.split(',');
+                return (+h) * 3600 + (+m) * 60 + (+sec) + (+ms) / 1000;
+            };
+            while ((match = regex.exec(data)) !== null) {
+                result.push({ start: toSec(match[1]), end: toSec(match[2]), text: match[3].trim().replace(/\n/g, ' ') });
+            }
+            return result;
+        };
+
+        // ✨ PHÉP MÀU NẰM Ở ĐÂY: RENDER BẰNG HTML5 CANVAS SIÊU MƯỢT
         const renderVideo = async (useVoice) => {
             if (!selectedVideoFile) return uLog('Goshujin-sama chưa chọn video kìa! 🥺', 'error');
             if (!D.subTxt.value.trim()) return uLog('Chưa có mã SRT phụ đề kìa ngài ơi! 📝', 'error');
@@ -217,94 +225,143 @@
             D.pCont.classList.remove('hidden');
             D.btnExSub.disabled = true;
             D.btnExDub.disabled = true;
-            uLog('Đang nạp lõi phép thuật FFmpeg... Ngài đợi em xíu! ⚙️', 'info');
+            uLog('Đang nạp Lò Phản Ứng Trình Duyệt... Ngài cứ để kệ máy chạy xíu nha! 🎬', 'warn');
 
             try {
-                if (!ffmpeg.loaded) {
-                    const coreURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
-                    const ffmpegURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd';
+                const subs = parseSRT(D.subTxt.value);
+                
+                // 1. Tạo rạp chiếu phim ẩn
+                const renderVid = document.createElement('video');
+                renderVid.src = URL.createObjectURL(selectedVideoFile);
+                renderVid.crossOrigin = "anonymous";
+                
+                // Chuẩn bị âm thanh lồng tiếng
+                let renderAudio = null;
+                if (useVoice && finalAudioBlob) {
+                    renderAudio = new Audio(URL.createObjectURL(finalAudioBlob));
+                    renderVid.muted = true; // Tắt tiếng gốc nếu có lồng tiếng
+                }
+
+                await new Promise(r => { renderVid.onloadedmetadata = r; });
+
+                // 2. Tạo tấm vải vẽ Canvas (bằng đúng kích thước video gốc)
+                const canvas = document.createElement('canvas');
+                canvas.width = renderVid.videoWidth;
+                canvas.height = renderVid.videoHeight;
+                const ctx = canvas.getContext('2d');
+
+                // 3. Khởi tạo máy quay phim ảo (30FPS)
+                const stream = canvas.captureStream(30);
+
+                // Nối đường dây âm thanh vào máy quay
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const dest = audioCtx.createMediaStreamDestination();
+
+                const sourceNode = audioCtx.createMediaElementSource(renderVid);
+                sourceNode.connect(dest);
+                // Mở loa nếu ngài muốn vừa render vừa nghe: sourceNode.connect(audioCtx.destination);
+
+                if (renderAudio) {
+                    const dubSource = audioCtx.createMediaElementSource(renderAudio);
+                    dubSource.connect(dest);
+                }
+                dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+
+                // 4. Bấm máy quay
+                const mimeType = MediaRecorder.isTypeSupported('video/webm; codecs=vp9') ? 'video/webm; codecs=vp9' : 'video/webm';
+                const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 5000000 });
+                const chunks = [];
+
+                recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+                
+                recorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: mimeType });
+                    const a = document.createElement('a'); 
+                    a.href = URL.createObjectURL(blob); 
+                    a.download = useVoice ? 'FoxStudio_Dubbed.webm' : 'FoxStudio_Subbed.webm'; 
+                    a.click();
                     
-                    // ✨✨ PHÉP MÀU NẰM Ở ĐÂY: Dùng toBlobURL trói chặt 3 file lại, đặc biệt là thằng 814.ffmpeg.js cứng đầu!
-                    await ffmpeg.load({
-                        coreURL: await toBlobURL(`${coreURL}/ffmpeg-core.js`, 'text/javascript'),
-                        wasmURL: await toBlobURL(`${coreURL}/ffmpeg-core.wasm`, 'application/wasm'),
-                        workerURL: await toBlobURL(`${ffmpegURL}/814.ffmpeg.js`, 'text/javascript') 
-                    });
-                }
+                    uLog('Tadaa! Nhiệm vụ hoàn thành xuất sắc thưa Goshujin-sama! 🎉', 'success');
+                    setTimeout(() => { D.pCont.classList.add('hidden'); }, 3000);
+                    D.btnExSub.disabled = false;
+                    D.btnExDub.disabled = false;
+                    D.pBar.style.width = `0%`;
+                    audioCtx.close();
+                };
 
-                uLog('Đang chuẩn bị dữ liệu vào bộ nhớ tạm... 📦', 'info');
-                await ffmpeg.writeFile('subs.srt', D.subTxt.value);
-                await ffmpeg.writeFile('in.mp4', await fetchFile(selectedVideoFile));
-                
-                D.pTxt.innerText = "Đang nạp Font chữ...";
-                const fontData = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
-                await ffmpeg.writeFile('font.ttf', new Uint8Array(await fontData.arrayBuffer()));
-                
-                let filter = `subtitles=subs.srt:fontsdir=.:force_style='FontName=Roboto,FontSize=${D.sSize.value*3},Alignment=6'`;
-                
-                if (D.chkBlur.checked) {
-                    const x = Math.floor(D.bX.value * D.pVid.videoWidth / 100);
-                    const y = Math.floor(D.bY.value * D.pVid.videoHeight / 100);
-                    const w = Math.floor(D.bW.value * D.pVid.videoWidth / 100);
-                    const h = Math.floor(D.bH.value * D.pVid.videoHeight / 100);
-                    filter += `,delogo=x=${x}:y=${y}:w=${w}:h=${h}`;
-                }
-                
-                let cmd = ['-i', 'in.mp4'];
-                
-                if(useVoice && finalAudioBlob) { 
-                    await ffmpeg.writeFile('au.mp3', await fetchFile(finalAudioBlob)); 
-                    cmd.push('-i', 'au.mp3'); 
-                }
-                
-                cmd.push('-vf', filter, '-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', (useVoice && finalAudioBlob) ? 'aac' : 'copy', 'out.mp4');
-                
-                uLog('Bắt đầu Render! Đừng đóng tab nha Goshujin-sama... 🚀', 'warn');
-                
-                ffmpeg.on('progress', ({ progress }) => {
-                    const percent = Math.max(0, Math.min(100, Math.round(progress * 100)));
-                    D.pBar.style.width = `${percent}%`;
-                    D.pPerc.innerText = `${percent}%`;
-                    D.pTxt.innerText = "Đang xuất video...";
-                });
+                // 5. Thợ vẽ làm việc liên tục từng khung hình
+                const drawFrame = () => {
+                    if (renderVid.paused || renderVid.ended) return;
 
-                await ffmpeg.exec(cmd);
-                
-                uLog('Xong rồi ạ! Đang đóng gói video cho ngài... 🎁', 'success');
-                const data = await ffmpeg.readFile('out.mp4');
-                const a = document.createElement('a'); 
-                a.href = URL.createObjectURL(new Blob([data], {type: 'video/mp4'})); 
-                a.download = useVoice ? 'FoxStudio_Dubbed.mp4' : 'FoxStudio_Subbed.mp4'; 
-                a.click();
-                
-                // Dọn dẹp RAM
-                await ffmpeg.deleteFile('in.mp4'); 
-                await ffmpeg.deleteFile('subs.srt');
-                if (useVoice && finalAudioBlob) await ffmpeg.deleteFile('au.mp3');
-                await ffmpeg.deleteFile('out.mp4');
-                
-                uLog('Tadaa! Nhiệm vụ hoàn thành xuất sắc thưa Goshujin-sama! 🎉', 'success');
+                    // Vẽ Video gốc
+                    ctx.drawImage(renderVid, 0, 0, canvas.width, canvas.height);
+
+                    // Vẽ Làm mờ (Che Sub Cũ)
+                    if (D.chkBlur.checked) {
+                        const x = D.bX.value * canvas.width / 100;
+                        const y = D.bY.value * canvas.height / 100;
+                        const w = D.bW.value * canvas.width / 100;
+                        const h = D.bH.value * canvas.height / 100;
+
+                        ctx.save();
+                        ctx.filter = 'blur(15px)';
+                        // Lấy chính ảnh đang vẽ làm mờ và đè lại đúng chỗ đó
+                        ctx.drawImage(canvas, x, y, w, h, x, y, w, h);
+                        ctx.restore();
+                    }
+
+                    // Vẽ Phụ đề mới
+                    const time = renderVid.currentTime;
+                    const activeSub = subs.find(s => time >= s.start && time <= s.end);
+                    if (activeSub && D.chkSub.checked) {
+                        const sY = D.sY.value * canvas.height / 100;
+                        const fSize = (D.sSize.value * canvas.height) / 100; // Cỡ chữ tỷ lệ với video
+
+                        ctx.font = `900 ${fSize}px Arial`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'top';
+
+                        // Vẽ viền đen cho dễ đọc
+                        ctx.lineWidth = fSize / 5;
+                        ctx.strokeStyle = 'black';
+                        ctx.strokeText(activeSub.text, canvas.width / 2, sY);
+
+                        // Tô màu vàng bên trong
+                        ctx.fillStyle = '#facc15';
+                        ctx.fillText(activeSub.text, canvas.width / 2, sY);
+                    }
+
+                    // Thanh tiến độ
+                    const progress = (renderVid.currentTime / renderVid.duration) * 100;
+                    D.pBar.style.width = `${progress}%`;
+                    D.pPerc.innerText = `${Math.round(progress)}%`;
+
+                    requestAnimationFrame(drawFrame);
+                };
+
+                // Lệnh bắt đầu!
+                recorder.start();
+                renderVid.play();
+                if (renderAudio) renderAudio.play();
+                drawFrame();
+
+                renderVid.onended = () => {
+                    recorder.stop();
+                };
 
             } catch (err) {
                 console.error(err);
                 uLog('Huhu, có lỗi xảy ra rồi: ' + err.message, 'error');
-            } finally {
-                setTimeout(() => { D.pCont.classList.add('hidden'); }, 3000);
                 D.btnExSub.disabled = false;
                 D.btnExDub.disabled = false;
-                D.pBar.style.width = `0%`;
             }
         };
 
         D.btnExSub.onclick = () => renderVideo(false);
         D.btnExDub.onclick = () => renderVideo(true);
 
-        D.btnAP.onclick = () => {
-            uLog("Chức năng AI đang chờ Goshujin-sama lập trình thêm ạ! 💖", "warn");
-        }
-        D.btnV.onclick = () => {
-            uLog("Chức năng Lồng tiếng đang chờ Goshujin-sama lập trình thêm ạ! 💖", "warn");
-        }
+        D.btnAP.onclick = () => { uLog("Chức năng AI đang chờ Goshujin-sama lập trình thêm ạ! 💖", "warn"); }
+        D.btnV.onclick = () => { uLog("Chức năng Lồng tiếng đang chờ Goshujin-sama lập trình thêm ạ! 💖", "warn"); }
     </script>
 </body>
 </html>
