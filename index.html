@@ -216,7 +216,6 @@
             }
         };
 
-        // BƯỚC 1: DỊCH & XUẤT SRT
         D.btnAP.onclick = async () => {
             if (!D.apiInp.value || !selectedVideoFile) return uLog('⚠️ Điền API Key và chọn Video!', 'warn');
             D.btnAP.disabled = true; D.pCont.classList.remove('hidden');
@@ -250,19 +249,16 @@
                         }; aiWorker.postMessage({action:'INIT'});
                     });
                 }
-
                 let srt = ""; chunks.forEach((c,i) => { const s=c.timestamp?c.timestamp[0]:c.start, e=c.timestamp?c.timestamp[1]:c.end; srt+=`${i+1}\n${fmtTime(s)} --> ${fmtTime(e)}\n${c.text.trim()}\n\n`; });
                 uLog('Gemini dịch SRT...', 'info'); D.pCont.classList.add('hidden');
                 const ai = new GoogleGenAI({ apiKey: D.apiInp.value });
                 const resp = await ai.models.generateContent({ model:'gemini-2.5-flash', contents:srt, config:{systemInstruction:`Dịch SRT sang Tiếng Việt. Style: ${D.styleSel.value}. GIỮ NGUYÊN cấu trúc thời gian/số thứ tự.`} });
                 D.subTxt.value = resp.text; uLog('✅ Xong Bước 1! Bạn có thể Xuất Video Chỉ Sub hoặc Lồng Tiếng.', 'success');
-                
                 D.btnExSub.classList.remove('hidden');
             } catch (err) { uLog(`❌ Lỗi: ${err.message}`, 'error'); D.pCont.classList.add('hidden'); }
             finally { D.btnAP.disabled = false; }
         };
 
-        // BƯỚC 2: LỒNG TIẾNG (CÓ CHỌN GIỌNG)
         D.btnV.onclick = async () => {
             if (!D.subTxt.value || !D.ckInp.value) return uLog('⚠️ Cần SRT và Cookie!', 'warn');
             const cTxt = D.subTxt.value.replace(/^\d+$/gm,'').replace(/^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$/gm,'').replace(/\n+/g,' ').trim();
@@ -273,37 +269,30 @@
                 const res = await fetch(proxy, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Cookie': D.ckInp.value }, body: JSON.stringify({ "speaker_id": D.voiceSel.value, "text": cTxt, "platform": "web" }) });
                 if (!res.ok) throw new Error('Proxy/Cookie lỗi!');
                 finalAudioBlob = await res.blob(); new Audio(URL.createObjectURL(finalAudioBlob)).play();
-                
                 D.btnExDub.classList.remove('hidden'); uLog('🔊 Lồng tiếng xong!', 'success');
             } catch (err) { uLog(`❌ Lỗi TTS: ${err.message}`, 'error'); }
             finally { D.btnV.disabled = false; }
         };
 
-        // HÀM RENDER CHUNG (ĐÃ SỬA LỖI TẠI ĐÂY - DÙNG TOBLOBURL ĐỂ SỬ LÝ WORKER)
-       const renderVideo = async (useVoice) => {
-    if (!selectedVideoFile) return;
-    D.pCont.classList.remove('hidden');
-    try {
-        if (!ffmpeg.loaded) { 
-            uLog('⏳ Đang nạp FFmpeg từ máy chủ đám mây...', 'info'); 
-            
-            // Dùng thẳng link từ unpkg, không cần tạo file trong GitHub nữa
-            const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-            await ffmpeg.load({ 
-                coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-                wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-                workerURL: await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript')
-            }); 
-        }
-                
+        const renderVideo = async (useVoice) => {
+            if (!selectedVideoFile) return;
+            D.pCont.classList.remove('hidden');
+            try {
+                if (!ffmpeg.loaded) { 
+                    uLog('⏳ Đang nạp FFmpeg từ máy chủ đám mây...', 'info'); 
+                    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+                    await ffmpeg.load({ 
+                        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+                        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                        workerURL: await toBlobURL('https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/esm/worker.js', 'text/javascript')
+                    }); 
+                }
                 ffmpeg.on('progress', ({ progress }) => setProg('Đang Render...', Math.round(progress * 100)));
-
                 if (!window.fontLoaded) {
                     const fRes = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
                     await ffmpeg.writeFile('font.ttf', new Uint8Array(await fRes.arrayBuffer())); window.fontLoaded=true;
                 }
                 await ffmpeg.writeFile('in.mp4', await fetchFile(selectedVideoFile));
-                
                 const vw=D.pVid.videoWidth, vh=D.pVid.videoHeight; let filters=[];
                 if (D.chkBlur.checked) {
                     let bx=Math.round(vw*D.bX.value/100), by=Math.round(vh*D.bY.value/100), bw=Math.round(vw*D.bW.value/100), bh=Math.round(vh*D.bH.value/100);
@@ -321,14 +310,12 @@
                     }
                     if(drw.length>0) filters.push(drw.join(','));
                 }
-
                 const cmd = ['-i', 'in.mp4'];
                 if (useVoice && finalAudioBlob) {
                     await ffmpeg.writeFile('au.mp3', await fetchFile(finalAudioBlob));
                     cmd.push('-i', 'au.mp3');
                 }
                 if (filters.length>0) cmd.push('-vf', filters.join(','));
-
                 if (useVoice && finalAudioBlob) {
                     uLog('⚙️ Đang Trộn Video + Sub + Âm Thanh Mới...', 'info');
                     cmd.push('-c:v', 'libx264', '-preset', 'ultrafast', '-map', '0:v:0', '-map', '1:a:0', '-shortest', 'out.mp4');
@@ -336,7 +323,6 @@
                     uLog('⚙️ Đang ép Sub và Giữ nguyên âm thanh gốc...', 'info');
                     cmd.push('-c:v', 'libx264', '-preset', 'ultrafast', '-c:a', 'copy', 'out.mp4');
                 }
-                
                 await ffmpeg.exec(cmd);
                 const url = URL.createObjectURL(new Blob([await ffmpeg.readFile('out.mp4')], { type: 'video/mp4' }));
                 const a = document.createElement('a'); a.href = url; a.download = `FoxStudio_${Date.now()}.mp4`;
