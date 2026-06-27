@@ -7,7 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
     
     <style>
         ::-webkit-scrollbar { width: 6px; }
@@ -21,7 +22,7 @@
         
         <div class="text-center border-b border-gray-800 pb-4 mb-6">
             <h1 class="text-2xl font-black bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent uppercase tracking-widest">🦊 FOXSTUDIO AI WORKSTATION 🦊</h1>
-            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Ổn Định Tuyệt Đối)</p>
+            <p class="text-xs text-gray-400 mt-1 tracking-wide">Trạm Chỉnh Sửa Phụ Đề & Lồng Tiếng Tự Động (Phiên Bản Không Thể Lỗi Hơn Được Nữa)</p>
         </div>
 
         <div class="flex flex-col md:flex-row gap-8">
@@ -142,17 +143,12 @@
     </div>
 
     <script>
-        // ✨ Dùng API của Lão Tướng v0.11. Cực kỳ đơn giản, không lỗi lầm.
-        const { createFFmpeg, fetchFile } = FFmpeg;
+        // ✨ Khai báo biến toàn cục của v0.12 UMD
+        const { FFmpeg } = window.FFmpegWASM;
+        const { fetchFile, toBlobURL } = window.FFmpegUtil;
         
-        // Chỉ định file core tĩnh 100% không đẻ nhánh
-        const ffmpeg = createFFmpeg({ 
-            log: true,
-            corePath: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
-        });
-
+        const ffmpeg = new FFmpeg(); 
         let selectedVideoFile = null, finalAudioBlob = null;
-        let isFfmpegLoaded = false;
         
         const D = { 
             upZone: document.getElementById('uploadZone'), vFile: document.getElementById('videoFile'), 
@@ -221,23 +217,28 @@
             D.pCont.classList.remove('hidden');
             D.btnExSub.disabled = true;
             D.btnExDub.disabled = true;
-            uLog('Đang nạp lõi phép thuật v0.11... Ngài đợi em xíu! ⚙️', 'info');
+            uLog('Đang nạp lõi phép thuật FFmpeg... Ngài đợi em xíu! ⚙️', 'info');
 
             try {
-                if (!isFfmpegLoaded) {
-                    await ffmpeg.load();
-                    isFfmpegLoaded = true;
+                if (!ffmpeg.loaded) {
+                    const coreURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+                    const ffmpegURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd';
+                    
+                    // ✨✨ PHÉP MÀU NẰM Ở ĐÂY: Dùng toBlobURL trói chặt 3 file lại, đặc biệt là thằng 814.ffmpeg.js cứng đầu!
+                    await ffmpeg.load({
+                        coreURL: await toBlobURL(`${coreURL}/ffmpeg-core.js`, 'text/javascript'),
+                        wasmURL: await toBlobURL(`${coreURL}/ffmpeg-core.wasm`, 'application/wasm'),
+                        workerURL: await toBlobURL(`${ffmpegURL}/814.ffmpeg.js`, 'text/javascript') 
+                    });
                 }
 
                 uLog('Đang chuẩn bị dữ liệu vào bộ nhớ tạm... 📦', 'info');
-                
-                // Cách ghi file của v0.11 ạ!
-                ffmpeg.FS('writeFile', 'in.mp4', await fetchFile(selectedVideoFile));
-                ffmpeg.FS('writeFile', 'subs.srt', await fetchFile(new Blob([D.subTxt.value], {type: 'text/plain'})));
+                await ffmpeg.writeFile('subs.srt', D.subTxt.value);
+                await ffmpeg.writeFile('in.mp4', await fetchFile(selectedVideoFile));
                 
                 D.pTxt.innerText = "Đang nạp Font chữ...";
                 const fontData = await fetch('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.66/fonts/Roboto/Roboto-Regular.ttf');
-                ffmpeg.FS('writeFile', 'font.ttf', new Uint8Array(await fontData.arrayBuffer()));
+                await ffmpeg.writeFile('font.ttf', new Uint8Array(await fontData.arrayBuffer()));
                 
                 let filter = `subtitles=subs.srt:fontsdir=.:force_style='FontName=Roboto,FontSize=${D.sSize.value*3},Alignment=6'`;
                 
@@ -252,7 +253,7 @@
                 let cmd = ['-i', 'in.mp4'];
                 
                 if(useVoice && finalAudioBlob) { 
-                    ffmpeg.FS('writeFile', 'au.mp3', await fetchFile(finalAudioBlob)); 
+                    await ffmpeg.writeFile('au.mp3', await fetchFile(finalAudioBlob)); 
                     cmd.push('-i', 'au.mp3'); 
                 }
                 
@@ -260,30 +261,27 @@
                 
                 uLog('Bắt đầu Render! Đừng đóng tab nha Goshujin-sama... 🚀', 'warn');
                 
-                // Cách theo dõi tiến độ của v0.11
-                ffmpeg.setProgress(({ ratio }) => {
-                    const percent = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+                ffmpeg.on('progress', ({ progress }) => {
+                    const percent = Math.max(0, Math.min(100, Math.round(progress * 100)));
                     D.pBar.style.width = `${percent}%`;
                     D.pPerc.innerText = `${percent}%`;
                     D.pTxt.innerText = "Đang xuất video...";
                 });
 
-                await ffmpeg.run(...cmd);
+                await ffmpeg.exec(cmd);
                 
                 uLog('Xong rồi ạ! Đang đóng gói video cho ngài... 🎁', 'success');
-                
-                // Cách đọc file trả về của v0.11
-                const data = ffmpeg.FS('readFile', 'out.mp4');
+                const data = await ffmpeg.readFile('out.mp4');
                 const a = document.createElement('a'); 
-                a.href = URL.createObjectURL(new Blob([data.buffer], {type: 'video/mp4'})); 
+                a.href = URL.createObjectURL(new Blob([data], {type: 'video/mp4'})); 
                 a.download = useVoice ? 'FoxStudio_Dubbed.mp4' : 'FoxStudio_Subbed.mp4'; 
                 a.click();
                 
-                // Dọn dẹp RAM v0.11
-                ffmpeg.FS('unlink', 'in.mp4'); 
-                ffmpeg.FS('unlink', 'subs.srt');
-                if (useVoice && finalAudioBlob) ffmpeg.FS('unlink', 'au.mp3');
-                ffmpeg.FS('unlink', 'out.mp4');
+                // Dọn dẹp RAM
+                await ffmpeg.deleteFile('in.mp4'); 
+                await ffmpeg.deleteFile('subs.srt');
+                if (useVoice && finalAudioBlob) await ffmpeg.deleteFile('au.mp3');
+                await ffmpeg.deleteFile('out.mp4');
                 
                 uLog('Tadaa! Nhiệm vụ hoàn thành xuất sắc thưa Goshujin-sama! 🎉', 'success');
 
